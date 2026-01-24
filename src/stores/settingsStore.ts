@@ -1,5 +1,6 @@
 import { create } from "zustand";
 import { persist } from "zustand/middleware";
+import type { APIConfig } from "../lib/api";
 
 export interface FolderPermission {
   id: string;
@@ -21,16 +22,20 @@ export interface Connector {
 }
 
 interface SettingsStore {
-  folders: FolderPermission[];
-  connectors: Connector[];
+  // API Configuration
+  apiConfig: APIConfig | null;
+  setApiConfig: (config: APIConfig) => void;
+  clearApiConfig: () => void;
   
-  // Folder actions
+  // Folders
+  folders: FolderPermission[];
   addFolder: (folder: Omit<FolderPermission, "id">) => void;
   removeFolder: (id: string) => void;
   toggleFolder: (id: string, enabled: boolean) => void;
   updateFolderPermissions: (id: string, permissions: ("Read" | "Write")[]) => void;
   
-  // Connector actions
+  // Connectors
+  connectors: Connector[];
   connectConnector: (id: string) => void;
   disconnectConnector: (id: string) => void;
   updateConnectorConfig: (id: string, config: Record<string, unknown>) => void;
@@ -39,7 +44,44 @@ interface SettingsStore {
 export const useSettingsStore = create<SettingsStore>()(
   persist(
     (set) => ({
+      // API Config
+      apiConfig: null,
+      
+      setApiConfig: (config) => set({ apiConfig: config }),
+      
+      clearApiConfig: () => set({ apiConfig: null }),
+
+      // Folders
       folders: [],
+
+      addFolder: (folder) =>
+        set((state) => ({
+          folders: [
+            ...state.folders,
+            { ...folder, id: Date.now().toString() },
+          ],
+        })),
+
+      removeFolder: (id) =>
+        set((state) => ({
+          folders: state.folders.filter((f) => f.id !== id),
+        })),
+
+      toggleFolder: (id, enabled) =>
+        set((state) => ({
+          folders: state.folders.map((f) =>
+            f.id === id ? { ...f, enabled } : f
+          ),
+        })),
+
+      updateFolderPermissions: (id, permissions) =>
+        set((state) => ({
+          folders: state.folders.map((f) =>
+            f.id === id ? { ...f, permissions } : f
+          ),
+        })),
+
+      // Connectors
       connectors: [
         {
           id: "chrome",
@@ -70,33 +112,6 @@ export const useSettingsStore = create<SettingsStore>()(
           connected: false,
         },
       ],
-
-      addFolder: (folder) =>
-        set((state) => ({
-          folders: [
-            ...state.folders,
-            { ...folder, id: Date.now().toString() },
-          ],
-        })),
-
-      removeFolder: (id) =>
-        set((state) => ({
-          folders: state.folders.filter((f) => f.id !== id),
-        })),
-
-      toggleFolder: (id, enabled) =>
-        set((state) => ({
-          folders: state.folders.map((f) =>
-            f.id === id ? { ...f, enabled } : f
-          ),
-        })),
-
-      updateFolderPermissions: (id, permissions) =>
-        set((state) => ({
-          folders: state.folders.map((f) =>
-            f.id === id ? { ...f, permissions } : f
-          ),
-        })),
 
       connectConnector: (id) =>
         set((state) => ({

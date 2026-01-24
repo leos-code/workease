@@ -1,5 +1,5 @@
 import { Routes, Route } from "react-router-dom";
-import { NewTaskPage, TaskPage, FilesPage, ConnectorsPage } from "./pages";
+import { NewTaskPage, TaskPage, FilesPage, ConnectorsPage, SettingsPage } from "./pages";
 
 function App() {
   return (
@@ -8,6 +8,7 @@ function App() {
       <Route path="/task/:id" element={<TaskPage />} />
       <Route path="/files" element={<FilesPage />} />
       <Route path="/connectors" element={<ConnectorsPage />} />
+      <Route path="/settings" element={<SettingsPage />} />
     </Routes>
   );
 }
