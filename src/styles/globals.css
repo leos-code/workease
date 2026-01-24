@@ -1,0 +1,80 @@
+@import "tailwindcss";
+
+:root {
+  /* Background colors */
+  --bg-page: #0A0A0B;
+  --bg-surface: #111113;
+  --bg-elevated: #1A1A1D;
+  --bg-interactive: #2A2A2E;
+  
+  /* Border colors */
+  --border-subtle: #1F1F23;
+  --border-default: #2A2A2E;
+  
+  /* Accent colors */
+  --accent-primary: #FF5C00;
+  --accent-light: #FF8A4C;
+  --accent-tint: #FF5C0018;
+  
+  /* Text colors */
+  --text-primary: #FFFFFF;
+  --text-muted: #FFFFFFCC;
+  --text-secondary: #ADADB0;
+  --text-tertiary: #8B8B90;
+  --text-disabled: #6B6B70;
+  --text-placeholder: #4A4A4E;
+  
+  /* Semantic colors */
+  --success: #22C55E;
+  --success-tint: #22C55E18;
+  --error: #EF4444;
+  --warning: #F59E0B;
+  --info: #3B82F6;
+  --info-tint: #3B82F620;
+}
+
+@layer base {
+  html, body, #root {
+    height: 100%;
+  }
+  
+  body {
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+    font-family: "Inter", sans-serif;
+  }
+  
+  /* Font utilities */
+  .font-display {
+    font-family: "Instrument Serif", serif;
+  }
+  
+  .font-mono {
+    font-family: "DM Mono", monospace;
+  }
+  
+  .font-body {
+    font-family: "Inter", sans-serif;
+  }
+}
+
+/* Custom scrollbar for dark theme */
+@layer utilities {
+  .scrollbar-thin::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-track {
+    background: var(--bg-surface);
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb {
+    background: var(--border-default);
+    border-radius: 3px;
+  }
+  
+  .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+    background: var(--text-disabled);
+  }
+}
