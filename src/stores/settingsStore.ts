@@ -2,16 +2,6 @@ import { create } from "zustand";
 import { persist } from "zustand/middleware";
 import type { APIConfig } from "../lib/api";
 
-export interface FolderPermission {
-  id: string;
-  name: string;
-  path: string;
-  fileCount: number;
-  lastAccessed: string;
-  permissions: ("Read" | "Write")[];
-  enabled: boolean;
-}
-
 export interface Connector {
   id: string;
   name: string;
@@ -26,13 +16,6 @@ interface SettingsStore {
   apiConfig: APIConfig | null;
   setApiConfig: (config: APIConfig) => void;
   clearApiConfig: () => void;
-  
-  // Folders
-  folders: FolderPermission[];
-  addFolder: (folder: Omit<FolderPermission, "id">) => void;
-  removeFolder: (id: string) => void;
-  toggleFolder: (id: string, enabled: boolean) => void;
-  updateFolderPermissions: (id: string, permissions: ("Read" | "Write")[]) => void;
   
   // Connectors
   connectors: Connector[];
@@ -50,36 +33,6 @@ export const useSettingsStore = create<SettingsStore>()(
       setApiConfig: (config) => set({ apiConfig: config }),
       
       clearApiConfig: () => set({ apiConfig: null }),
-
-      // Folders
-      folders: [],
-
-      addFolder: (folder) =>
-        set((state) => ({
-          folders: [
-            ...state.folders,
-            { ...folder, id: Date.now().toString() },
-          ],
-        })),
-
-      removeFolder: (id) =>
-        set((state) => ({
-          folders: state.folders.filter((f) => f.id !== id),
-        })),
-
-      toggleFolder: (id, enabled) =>
-        set((state) => ({
-          folders: state.folders.map((f) =>
-            f.id === id ? { ...f, enabled } : f
-          ),
-        })),
-
-      updateFolderPermissions: (id, permissions) =>
-        set((state) => ({
-          folders: state.folders.map((f) =>
-            f.id === id ? { ...f, permissions } : f
-          ),
-        })),
 
       // Connectors
       connectors: [

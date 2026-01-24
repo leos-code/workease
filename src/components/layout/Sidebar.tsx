@@ -2,7 +2,6 @@ import { NavLink, useLocation } from "react-router-dom";
 import { cn } from "../../lib/utils";
 import {
   MessageSquare,
-  Folder,
   GitBranch,
   Settings,
   Plus,
@@ -86,7 +85,6 @@ export function Sidebar() {
           {/* Navigation */}
           <nav className="flex flex-col gap-1">
             <NavItem to="/" icon={<MessageSquare size={18} />} label="Tasks" />
-            <NavItem to="/files" icon={<Folder size={18} />} label="Files" />
             <NavItem to="/connectors" icon={<GitBranch size={18} />} label="Connectors" />
             <NavItem to="/settings" icon={<Settings size={18} />} label="Settings" />
           </nav>
