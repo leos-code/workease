@@ -22,7 +22,7 @@ export function InputBox({
   };
 
   const handleKeyDown = (e: React.KeyboardEvent) => {
-    if (e.key === "Enter" && e.metaKey) {
+    if (e.key === "Enter") {
       e.preventDefault();
       handleSubmit();
     }
@@ -44,7 +44,7 @@ export function InputBox({
         />
         <div className="flex items-center gap-1 px-2 py-1 bg-[var(--bg-elevated)] border border-[var(--border-default)] rounded">
           <span className="text-[11px] font-mono text-[var(--text-disabled)]">
-            ⌘ Enter
+            Enter
           </span>
         </div>
       </div>

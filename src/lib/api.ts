@@ -15,7 +15,7 @@ export interface StreamCallbacks {
 }
 
 export interface APIConfig {
-  provider: "anthropic" | "openai" | "openrouter";
+  provider: "anthropic" | "openai" | "openrouter" | "openai-compatible";
   apiKey: string;
   model?: string;
   baseUrl?: string;
@@ -43,14 +43,28 @@ export async function streamChat(
   callbacks: StreamCallbacks
 ): Promise<void> {
   const { provider, apiKey, model, baseUrl } = config;
-  const selectedModel = model || DEFAULT_MODELS[provider];
-  const url = baseUrl || API_URLS[provider];
+  const selectedModel =
+    provider === "openai-compatible"
+      ? (model || "").trim()
+      : model || DEFAULT_MODELS[provider as keyof typeof DEFAULT_MODELS];
+  let url: string;
+  if (provider === "openai-compatible") {
+    const base = (baseUrl || "").trim().replace(/\/+$/, "");
+    if (!base || !selectedModel) {
+      callbacks.onError(new Error("Base URL and Model are required for OpenAI-compatible provider."));
+      return;
+    }
+    url = base.includes("/chat/completions") ? base : `${base}/chat/completions`;
+  } else {
+    url = baseUrl || API_URLS[provider as keyof typeof API_URLS];
+  }
 
   try {
     if (provider === "anthropic") {
       await streamAnthropic(url, apiKey, selectedModel, messages, systemPrompt, callbacks);
     } else {
-      await streamOpenAICompatible(url, apiKey, selectedModel, messages, systemPrompt, callbacks, provider);
+      const isOpenRouter = provider === "openrouter";
+      await streamOpenAICompatible(url, apiKey, selectedModel, messages, systemPrompt, callbacks, isOpenRouter);
     }
   } catch (error) {
     callbacks.onError(error instanceof Error ? error : new Error(String(error)));
@@ -132,14 +146,14 @@ async function streamOpenAICompatible(
   messages: ChatMessage[],
   systemPrompt: string,
   callbacks: StreamCallbacks,
-  provider: string
+  isOpenRouter: boolean
 ): Promise<void> {
   const headers: Record<string, string> = {
     "Content-Type": "application/json",
     Authorization: `Bearer ${apiKey}`,
   };
 
-  if (provider === "openrouter") {
+  if (isOpenRouter) {
     headers["HTTP-Referer"] = "https://workease.app";
     headers["X-Title"] = "WorkEase";
   }
@@ -162,7 +176,7 @@ async function streamOpenAICompatible(
 
   if (!response.ok) {
     const error = await response.text();
-    throw new Error(`${provider} API error: ${response.status} - ${error}`);
+    throw new Error(`OpenAI-compatible API error: ${response.status} - ${error}`);
   }
 
   const reader = response.body?.getReader();

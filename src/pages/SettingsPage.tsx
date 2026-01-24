@@ -12,9 +12,10 @@ import {
   Sparkles,
   Zap,
   Globe,
+  Server,
 } from "lucide-react";
 
-type Provider = "anthropic" | "openai" | "openrouter";
+type Provider = "anthropic" | "openai" | "openrouter" | "openai-compatible";
 
 const PROVIDERS: {
   id: Provider;
@@ -24,6 +25,7 @@ const PROVIDERS: {
   color: string;
   defaultModel: string;
   models: string[];
+  customEndpoint?: boolean;
 }[] = [
   {
     id: "anthropic",
@@ -63,44 +65,57 @@ const PROVIDERS: {
       "meta-llama/llama-3.1-405b-instruct",
     ],
   },
+  {
+    id: "openai-compatible",
+    name: "OpenAI 兼容",
+    description: "自定义 Base URL、模型名、API Key",
+    icon: Server,
+    color: "#8B5CF6",
+    defaultModel: "",
+    models: [],
+    customEndpoint: true,
+  },
 ];
 
 export function SettingsPage() {
   const { apiConfig, setApiConfig, clearApiConfig } = useSettingsStore();
   
   const [selectedProvider, setSelectedProvider] = useState<Provider>(
-    apiConfig?.provider || "anthropic"
+    (apiConfig?.provider as Provider) || "anthropic"
   );
   const [apiKey, setApiKey] = useState(apiConfig?.apiKey || "");
+  const [baseUrl, setBaseUrl] = useState(apiConfig?.baseUrl || "");
   const [selectedModel, setSelectedModel] = useState(
-    apiConfig?.model || PROVIDERS[0].defaultModel
+    apiConfig?.model ?? PROVIDERS[0].defaultModel
   );
   const [showKey, setShowKey] = useState(false);
   const [testStatus, setTestStatus] = useState<"idle" | "testing" | "success" | "error">("idle");
   const [testError, setTestError] = useState<string | null>(null);
 
   const currentProvider = PROVIDERS.find((p) => p.id === selectedProvider)!;
+  const isOpenAICompatible = selectedProvider === "openai-compatible";
 
-  // Update model when provider changes
+  // Update model when provider changes (skip for custom endpoint)
   useEffect(() => {
     const provider = PROVIDERS.find((p) => p.id === selectedProvider);
-    if (provider) {
+    if (provider && !provider.customEndpoint) {
       setSelectedModel(provider.defaultModel);
     }
   }, [selectedProvider]);
 
   const handleTest = async () => {
     if (!apiKey.trim()) return;
-    
+    if (isOpenAICompatible && (!baseUrl.trim() || !selectedModel.trim())) return;
+
     setTestStatus("testing");
     setTestError(null);
 
     try {
-      // Simple API test - just verify the key works
       const config: APIConfig = {
         provider: selectedProvider,
         apiKey: apiKey.trim(),
-        model: selectedModel,
+        model: selectedModel.trim() || undefined,
+        baseUrl: isOpenAICompatible ? baseUrl.trim().replace(/\/+$/, "") : undefined,
       };
 
       let testUrl: string;
@@ -117,6 +132,18 @@ export function SettingsPage() {
         };
         body = JSON.stringify({
           model: selectedModel,
+          max_tokens: 10,
+          messages: [{ role: "user", content: "Hi" }],
+        });
+      } else if (selectedProvider === "openai-compatible") {
+        const base = (config.baseUrl || "").trim();
+        testUrl = base.includes("/chat/completions") ? base : `${base}/chat/completions`;
+        headers = {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${config.apiKey}`,
+        };
+        body = JSON.stringify({
+          model: config.model,
           max_tokens: 10,
           messages: [{ role: "user", content: "Hi" }],
         });
@@ -150,7 +177,6 @@ export function SettingsPage() {
       }
 
       setTestStatus("success");
-      // Auto-save on successful test
       setApiConfig(config);
     } catch (err) {
       setTestStatus("error");
@@ -161,6 +187,8 @@ export function SettingsPage() {
   const handleClear = () => {
     clearApiConfig();
     setApiKey("");
+    setBaseUrl("");
+    setSelectedModel(PROVIDERS[0].defaultModel);
     setTestStatus("idle");
     setTestError(null);
   };
@@ -188,7 +216,7 @@ export function SettingsPage() {
               <h2 className="text-sm font-semibold text-[var(--text-primary)]">
                 AI Provider
               </h2>
-              <div className="grid grid-cols-3 gap-3">
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                 {PROVIDERS.map((provider) => {
                   const Icon = provider.icon;
                   const isSelected = selectedProvider === provider.id;
@@ -227,6 +255,53 @@ export function SettingsPage() {
               </div>
             </div>
 
+            {/* Base URL (OpenAI-compatible only) */}
+            {isOpenAICompatible && (
+              <div className="flex flex-col gap-3">
+                <label className="text-sm font-semibold text-[var(--text-primary)]">
+                  Base URL
+                </label>
+                <input
+                  type="url"
+                  value={baseUrl}
+                  onChange={(e) => setBaseUrl(e.target.value)}
+                  placeholder="https://api.openai.com/v1 或你的兼容端点"
+                  className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] outline-none focus:border-[var(--accent-primary)]"
+                />
+                <p className="text-xs text-[var(--text-tertiary)]">
+                  兼容 OpenAI 格式的 API 根地址，如 OpenRouter、本地 LLM 等。无需包含 /chat/completions。
+                </p>
+              </div>
+            )}
+
+            {/* Model */}
+            <div className="flex flex-col gap-3">
+              <label className="text-sm font-semibold text-[var(--text-primary)]">
+                {isOpenAICompatible ? "模型名" : "Model"}
+              </label>
+              {isOpenAICompatible ? (
+                <input
+                  type="text"
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  placeholder="例如 gpt-4o、qwen-plus、deepseek-chat"
+                  className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] outline-none focus:border-[var(--accent-primary)]"
+                />
+              ) : (
+                <select
+                  value={selectedModel}
+                  onChange={(e) => setSelectedModel(e.target.value)}
+                  className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
+                >
+                  {currentProvider.models.map((model) => (
+                    <option key={model} value={model}>
+                      {model}
+                    </option>
+                  ))}
+                </select>
+              )}
+            </div>
+
             {/* API Key */}
             <div className="flex flex-col gap-3">
               <label className="text-sm font-semibold text-[var(--text-primary)]">
@@ -242,7 +317,7 @@ export function SettingsPage() {
                     type={showKey ? "text" : "password"}
                     value={apiKey}
                     onChange={(e) => setApiKey(e.target.value)}
-                    placeholder={`Enter your ${currentProvider.name} API key`}
+                    placeholder={isOpenAICompatible ? "输入 API Key" : `Enter your ${currentProvider.name} API key`}
                     className="w-full pl-11 pr-12 py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] placeholder:text-[var(--text-placeholder)] outline-none focus:border-[var(--accent-primary)]"
                   />
                   <button
@@ -254,26 +329,8 @@ export function SettingsPage() {
                 </div>
               </div>
               <p className="text-xs text-[var(--text-tertiary)]">
-                Your API key is stored locally and never sent to our servers.
+                API Key 仅存储在本地，不会发送到我们的服务器。
               </p>
-            </div>
-
-            {/* Model Selection */}
-            <div className="flex flex-col gap-3">
-              <label className="text-sm font-semibold text-[var(--text-primary)]">
-                Model
-              </label>
-              <select
-                value={selectedModel}
-                onChange={(e) => setSelectedModel(e.target.value)}
-                className="w-full px-4 py-3 bg-[var(--bg-surface)] border border-[var(--border-default)] rounded-lg text-sm text-[var(--text-primary)] outline-none focus:border-[var(--accent-primary)]"
-              >
-                {currentProvider.models.map((model) => (
-                  <option key={model} value={model}>
-                    {model}
-                  </option>
-                ))}
-              </select>
             </div>
 
             {/* Test Result */}
@@ -298,7 +355,11 @@ export function SettingsPage() {
               <Button
                 variant="primary"
                 onClick={handleTest}
-                disabled={!apiKey.trim() || testStatus === "testing"}
+                disabled={
+                  !apiKey.trim() ||
+                  testStatus === "testing" ||
+                  (isOpenAICompatible && (!baseUrl.trim() || !selectedModel.trim()))
+                }
               >
                 {testStatus === "testing" ? "Testing..." : "Test & Save"}
               </Button>
